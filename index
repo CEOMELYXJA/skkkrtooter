@@ -1,1 +1,251 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>i9 Dash</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<style>
+:root{--bg:#fff;--fg:#000;--mut:#8a8a8a;--line:rgba(128,128,128,.28);--card:rgba(128,128,128,.1)}
+[data-t=d]{--bg:#000;--fg:#fff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 -apple-system,"SF Pro Text",system-ui,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);overflow-x:hidden}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px}
+header b{font-weight:600;letter-spacing:.01em}
+#st{color:var(--mut);font-size:13px}
+button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 14px;cursor:pointer}
+button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+#th{padding:6px 10px;border-radius:99px;font-size:13px}
+nav{display:flex;gap:4px;padding:0 14px;border-bottom:1px solid var(--line)}
+nav button{flex:1;border:0;border-radius:0;background:none;color:var(--mut);padding:10px 0}
+nav button.on{color:var(--fg);box-shadow:inset 0 -2px var(--fg);background:none}
+section{display:none;padding:16px 18px 40px;max-width:520px;margin:auto}
+section.on{display:block}
+#gauge{width:100%;max-width:340px;display:block;margin:0 auto}
+#gauge path{fill:none;stroke-linecap:round;stroke-width:9}
+#sp{font-size:84px;font-weight:200;text-align:center;line-height:1;margin-top:-86px;font-variant-numeric:tabular-nums}
+#un{text-align:center;color:var(--mut);margin-bottom:18px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.c{background:var(--card);border-radius:14px;padding:12px 14px}
+.c small{display:block;color:var(--mut);font-size:12px}
+.c b{font-size:22px;font-weight:500;font-variant-numeric:tabular-nums}
+.bar{height:8px;background:var(--line);border-radius:9px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--fg);width:0;transition:width .4s}
+h3{margin:22px 0 8px;font-size:15px;font-weight:600}
+p.n{color:var(--mut);font-size:13px;margin:6px 0}
+.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);gap:10px}
+.row span:last-child{color:var(--mut);text-align:right}
+#hue{width:100%;height:30px;-webkit-appearance:none;appearance:none;border-radius:99px;background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
+#hue::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid #000}
+canvas{width:100%;height:220px;background:var(--card);border-radius:14px;margin-top:10px}
+.err{color:#d33}
+</style>
+</head>
+<body>
+<header><b>i9 Dash</b><span id="st">Déconnecté</span><button id="th" aria-label="Thème">☾</button></header>
+<nav id="nav"><button data-s="a" class="on">Tableau</button><button data-s="b">Trajets</button><button data-s="c">Météo</button><button data-s="d">Entretien</button></nav>
+
+<section id="a" class="on">
+ <button id="cn" style="width:100%;margin-bottom:12px">Connecter ma trottinette</button>
+ <p id="ns" class="n err" hidden>Ce navigateur ne supporte pas le Bluetooth web. Sur iPhone, ouvre cette page dans l'app gratuite <b>Bluefy</b>. Sur Android, utilise Chrome.</p>
+ <svg id="gauge" viewBox="0 0 200 110"><path d="M12 100A88 88 0 0 1 188 100" stroke="var(--line)"/><path id="arc" d="M12 100A88 88 0 0 1 188 100" stroke="var(--fg)" stroke-dasharray="277" stroke-dashoffset="277"/></svg>
+ <div id="sp">--</div><div id="un">km/h</div>
+ <div class="c"><small>Batterie</small><b id="bt">--</b><div class="bar"><i id="bb"></i></div><small id="rg" style="margin-top:6px"></small></div>
+ <div class="g">
+  <div class="c"><small>Trajet (session)</small><b id="tr">--</b></div>
+  <div class="c"><small>Durée</small><b id="tm">--</b></div>
+  <div class="c"><small>Odomètre</small><b id="od">--</b></div>
+  <div class="c"><small>Vitesse moy. session</small><b id="av">--</b></div>
+  <div class="c"><small>Accélération</small><b id="ac">--</b></div>
+  <div class="c"><small>vs ta moyenne</small><b id="vs">--</b></div>
+ </div>
+ <h3>Commandes</h3>
+ <div class="g">
+  <button data-c="head">Phare avant</button><button data-c="tail">Feu arrière</button>
+  <button data-c="lock">Verrouiller</button><button data-c="unit">Unité mph</button>
+  <button data-c="start">Démarrage zéro</button><button data-c="cruise">Régulateur</button>
+  <button data-g="1">Mode 1</button><button data-g="2">Mode 2</button>
+ </div>
+ <h3>Effet des feux sur la batterie</h3><div id="im"></div>
+ <p class="n">Mesuré en roulant : l'app compare les % perdus par heure avec et sans feux. Plus tu roules, plus c'est précis.</p>
+ <h3>Défauts</h3><div id="ft" class="n">Aucun</div>
+ <h3>Couleur du fond</h3>
+ <input id="hue" type="range" min="0" max="360" value="0"><button id="hr" style="margin-top:8px">Noir / blanc d'origine</button>
+</section>
+
+<section id="b">
+ <h3>Enregistrer l'itinéraire</h3>
+ <button id="rc" style="width:100%">Démarrer l'enregistrement GPS</button>
+ <canvas id="map" width="480" height="440"></canvas>
+ <p class="n" id="rs"></p><button id="gx">Exporter en GPX</button>
+ <h3>10 dernières sessions</h3><div id="hs"></div>
+</section>
+
+<section id="c"><h3>Prochaines 3 heures</h3><div id="wx" class="n">Chargement…</div><button id="wr">Actualiser</button></section>
+
+<section id="d">
+ <h3>Freins (estimation)</h3>
+ <div class="c"><small>Plaquettes restantes</small><b id="bw">--</b><div class="bar"><i id="bwb"></i></div></div>
+ <p class="n" id="bn"></p>
+ <h3>Prochains entretiens</h3><div id="mt"></div>
+ <p class="n">Estimations génériques basées sur les kilomètres et les freinages brusques détectés, pas sur des données du fabricant. Vérifie tes freins à l'œil.</p>
+ <button id="bs">Freins changés</button>
+</section>
+
+<script src="proto.js"></script>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const J=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const W=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+const cfg=J('cfg',{h:null,t:null}),drain=J('drain',{}),hist=J('hist',[]),svc=J('svc',{b0:null,hard:0});
+let pts=J('route',[]),S=null,chW=null,dev=null,busy=false,last=0,lastV=0,lastB=null,lastHard=0,aNow=0,aS=0,aN=0,vS=0,tS=0,vMax=0,rec=null,saveT=0;
+
+// ---------- Thème ----------
+function theme(){
+  const d=cfg.t?cfg.t==='d':matchMedia('(prefers-color-scheme:dark)').matches;
+  document.documentElement.dataset.t=d?'d':'l';$('#th').textContent=d?'☀':'☾';
+  const r=document.documentElement.style;
+  if(cfg.h==null){r.removeProperty('--bg');r.removeProperty('--fg');}
+  else{r.setProperty('--bg',d?`hsl(${cfg.h} 55% 11%)`:`hsl(${cfg.h} 85% 93%)`);r.setProperty('--fg',d?'#fff':'#111');}
+  document.querySelector('meta[name=theme-color]').content=getComputedStyle(document.body).backgroundColor;
+}
+$('#th').onclick=()=>{const d=document.documentElement.dataset.t==='d';cfg.t=d?'l':'d';W('cfg',cfg);theme()};
+$('#hue').oninput=e=>{cfg.h=+e.target.value;W('cfg',cfg);theme()};
+$('#hr').onclick=()=>{cfg.h=null;W('cfg',cfg);theme()};
+let tap=0;$('#gauge').onclick=()=>{if(++tap>=3){tap=0;$('#hue').scrollIntoView({behavior:'smooth'})}setTimeout(()=>tap=0,700)};
+theme();
+
+// ---------- Onglets ----------
+$$('#nav button').forEach(b=>b.onclick=()=>{$$('#nav button,section').forEach(x=>x.classList.remove('on'));b.classList.add('on');$('#'+b.dataset.s).classList.add('on');if(b.dataset.s==='c')wx();if(b.dataset.s==='b')draw();if(b.dataset.s==='d')maint()});
+
+// ---------- Bluetooth ----------
+const SVC=P.U('fff0');
+if(!navigator.bluetooth){$('#ns').hidden=false;$('#cn').disabled=true}
+$('#cn').onclick=async()=>{
+  if(dev&&dev.gatt.connected){dev.gatt.disconnect();return}
+  try{
+    $('#st').textContent='Recherche…';
+    dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SVC]});
+    dev.addEventListener('gattserverdisconnected',onDisc);
+    const g=await dev.gatt.connect(),s=await g.getPrimaryService(SVC);
+    chW=await s.getCharacteristic(P.U('fff6'));
+    try{ // même vérification que KCQ : l'état du mot de passe (FFF1) puis le mot de passe (FFF5)
+      const on=(await(await s.getCharacteristic(P.U('fff1'))).readValue()).getUint8(0)===1;
+      if(on){const v=await(await s.getCharacteristic(P.U('fff5'))).readValue();
+        let pin;try{pin=new TextDecoder('gbk').decode(v)}catch{pin=new TextDecoder().decode(v)}
+        const t=prompt('Mot de passe de la trottinette :');if(t!==pin.replace(/\0/g,'')){g.disconnect();alert('Mot de passe incorrect');return}}
+    }catch(e){}
+    const n=await s.getCharacteristic(P.U('fff7'));
+    n.addEventListener('characteristicvaluechanged',e=>onData(new Uint8Array(e.target.value.buffer)));
+    await n.startNotifications();
+    reset();$('#st').textContent='Connecté';$('#cn').textContent='Déconnecter';
+  }catch(e){$('#st').textContent=e.name==='NotFoundError'?'Annulé':'Erreur : '+e.message}
+};
+function reset(){last=0;lastB=null;aS=aN=vS=tS=vMax=0}
+function onDisc(){
+  $('#st').textContent='Déconnecté';$('#cn').textContent='Connecter ma trottinette';
+  if(S&&(S.trip>0||S.time>60)){hist.unshift({d:Date.now(),km:S.trip,min:Math.round(S.time/60),avg:tS?vS/tS:0,max:vMax,acc:aN?aS/aN:0});hist.length=Math.min(hist.length,10);W('hist',hist);W('drain',drain);W('svc',svc)}
+  S=null;hs();
+}
+async function send(frame){
+  if(!chW||busy)return;busy=true;
+  try{const u=new Uint8Array(frame);chW.writeValueWithResponse?await chW.writeValueWithResponse(u):await chW.writeValue(u)}
+  catch(e){$('#st').textContent='Écriture échouée'}
+  busy=false;
+}
+$$('button[data-c]').forEach(b=>b.onclick=()=>{if(!S)return;const k=b.dataset.c;send(P.frame(S,P.CMD[k],!(k==='unit'?S.mph:S[k])))});
+$$('button[data-g]').forEach(b=>b.onclick=()=>{if(!S)return;const g=+b.dataset.g;send(P.frame(S,0,g===2,g))});
+
+// ---------- Données ----------
+function onData(b){
+  const s=P.parse(b);if(!s)return;
+  const now=Date.now(),dt=last?(now-last)/1e3:0;last=now;S=s;
+  const k=s.mph?1.6:1,v=Math.min(50,s.speed),mv=v>2;
+  if(dt>0&&dt<5){
+    if(mv){const c=''+s.head+s.tail,a=drain[c]=drain[c]||{p:0,s:0};a.s+=dt;if(lastB!=null&&lastB>s.bat)a.p+=lastB-s.bat;vS+=v*dt;tS+=dt;vMax=Math.max(vMax,v)}
+    if(dt<2){const a=(v-lastV)/dt;aNow=aNow*.7+a*.3;if(a>.3){aS+=a;aN++}if(a<-8&&now-lastHard>3000){svc.hard++;lastHard=now}}
+  }
+  lastV=v;lastB=s.bat;
+  if(now-saveT>30000){saveT=now;W('drain',drain);W('svc',svc)}
+  if(svc.b0==null){svc.b0=s.total;W('svc',svc)}
+  const u=s.mph?'mi':'km',f=x=>(x/k).toFixed(1);
+  $('#sp').textContent=(v/k).toFixed(1);$('#un').textContent=s.mph?'mph':'km/h';
+  $('#arc').style.strokeDashoffset=277*(1-Math.min(1,v/50));
+  $('#bt').textContent=s.bat+' %';$('#bb').style.width=s.bat+'%';
+  $('#tr').textContent=f(s.trip)+' '+u;$('#od').textContent=Math.round(s.total/k)+' '+u;
+  $('#tm').textContent=Math.floor(s.time/60)+' min '+String(s.time%60).padStart(2,'0')+' s';
+  const av=tS?vS/tS:0,pa=hist.filter(h=>h.avg>0),mavg=pa.length?pa.reduce((x,h)=>x+h.avg,0)/pa.length:0,pac=hist.filter(h=>h.acc>0),macc=pac.length?pac.reduce((x,h)=>x+h.acc,0)/pac.length:0;
+  $('#av').textContent=(av/k).toFixed(1)+' '+(s.mph?'mph':'km/h');
+  $('#ac').textContent=(aNow/k).toFixed(1)+' /s';
+  $('#vs').textContent=mavg?((av/mavg-1)*100).toFixed(0)+' % vit.'+(macc?' · '+((aNow/macc-1)*100).toFixed(0)+' % acc.':''):'pas encore d\'historique';
+  $$('button[data-c]').forEach(b=>{const c=b.dataset.c;b.classList.toggle('on',!!(c==='unit'?s.mph:s[c]))});
+  $$('button[data-g]').forEach(b=>b.classList.toggle('on',+b.dataset.g===s.gear));
+  const f2=[];P.FAULTS.forEach((n,i)=>{if((s.faults>>i)&1)f2.push(n)});if(s.flags&1)f2.push('Moteur bloqué');if((s.flags>>6)&1)f2.push('Température');
+  $('#ft').textContent=f2.length?f2.join(' · '):'Aucun';$('#ft').className=f2.length?'err':'n';
+  impact();
+}
+function rate(c){const a=drain[c];return a&&a.s>300?a.p/(a.s/3600):null}
+function impact(){
+  const base=rate('00'),L={'10':'Phare avant','01':'Feu arrière','11':'Avant + arrière'},o=[`<div class="row"><span>Sans feux</span><span>${base!=null?base.toFixed(1)+' %/h':'à mesurer en roulant'}</span></div>`];
+  for(const c in L){const r=rate(c);o.push(`<div class="row"><span>${L[c]}</span><span>${r==null?'à mesurer':r.toFixed(1)+' %/h'+(base!=null?' ('+(r-base>=0?'+':'')+(r-base).toFixed(1)+')':'')}</span></div>`)}
+  $('#im').innerHTML=o.join('');
+  const cur=S?rate(''+S.head+S.tail)||base:null;$('#rg').textContent=cur&&S?'Autonomie estimée : ~'+Math.round(S.bat/cur*60)+' min de roulage':'';
+}
+impact();
+
+// ---------- Trajets ----------
+function hs(){const k=S&&S.mph?1.6:1;$('#hs').innerHTML=hist.length?hist.map(h=>`<div class="row"><span>${new Date(h.d).toLocaleDateString('fr-CA',{day:'numeric',month:'short'})} · ${(h.km/k).toFixed(1)} ${k>1?'mi':'km'} · ${h.min} min</span><span>moy. ${(h.avg/k).toFixed(1)} · max ${(h.max/k).toFixed(0)}</span></div>`).join(''):'<p class="n">Aucune session enregistrée.</p>'}
+hs();
+const hav=(a,b)=>{const R=6371,r=Math.PI/180,x=(b[0]-a[0])*r,y=(b[1]-a[1])*r,q=Math.sin(x/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(q))};
+function draw(){
+  const c=$('#map'),g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);
+  let d=0;for(let i=1;i<pts.length;i++)d+=hav(pts[i-1],pts[i]);
+  $('#rs').textContent=pts.length?pts.length+' points · '+d.toFixed(2)+' km':'Aucun itinéraire.';
+  if(pts.length<2)return;
+  const la=pts.map(p=>p[0]),lo=pts.map(p=>p[1]),mx=Math.min(...lo),Mx=Math.max(...lo),my=Math.min(...la),My=Math.max(...la),cs=Math.cos(la[0]*Math.PI/180);
+  const w=(Mx-mx)*cs||1e-5,h=(My-my)||1e-5,s=Math.min((c.width-40)/w,(c.height-40)/h);
+  g.strokeStyle=getComputedStyle(document.body).color;g.lineWidth=4;g.lineJoin='round';g.beginPath();
+  pts.forEach((p,i)=>{const x=20+((p[1]-mx)*cs)*s,y=c.height-20-(p[0]-my)*s;i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();
+}
+$('#rc').onclick=()=>{
+  if(rec!=null){navigator.geolocation.clearWatch(rec);rec=null;$('#rc').textContent='Démarrer l\'enregistrement GPS';$('#rc').classList.remove('on');return}
+  pts=[];W('route',pts);$('#rc').textContent='Arrêter l\'enregistrement';$('#rc').classList.add('on');
+  rec=navigator.geolocation.watchPosition(p=>{pts.push([p.coords.latitude,p.coords.longitude,Date.now()]);W('route',pts);draw()},e=>{$('#rs').textContent='GPS : '+e.message},{enableHighAccuracy:true});
+};
+$('#gx').onclick=()=>{if(!pts.length)return;const x='<?xml version="1.0"?><gpx version="1.1" creator="i9 Dash"><trk><trkseg>'+pts.map(p=>`<trkpt lat="${p[0]}" lon="${p[1]}"><time>${new Date(p[2]).toISOString()}</time></trkpt>`).join('')+'</trkseg></trk></gpx>';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([x],{type:'application/gpx+xml'}));a.download='trajet.gpx';a.click()};
+draw();
+
+// ---------- Météo (Open-Meteo, gratuit, sans clé) ----------
+function wx(){
+  $('#wx').textContent='Localisation…';
+  navigator.geolocation.getCurrentPosition(async p=>{
+    try{
+      const r=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.coords.latitude}&longitude=${p.coords.longitude}&hourly=temperature_2m,precipitation_probability,cloud_cover,wind_gusts_10m&timezone=auto&forecast_days=2`)).json();
+      const h=r.hourly,now=new Date().toISOString().slice(0,13);let i=h.time.findIndex(t=>t.slice(0,13)>=now.slice(0,13));if(i<0)i=0;
+      $('#wx').innerHTML=[0,1,2].map(j=>i+j).map(n=>`<div class="c" style="margin-bottom:8px"><small>${h.time[n].slice(11,16)}</small><b>${Math.round(h.temperature_2m[n])} °C</b><small>Pluie ${h.precipitation_probability[n]} % · Nuages ${h.cloud_cover[n]} % · Rafales ${Math.round(h.wind_gusts_10m[n])} km/h</small></div>`).join('');
+    }catch(e){$('#wx').textContent='Météo indisponible (connexion ?)'}
+  },e=>$('#wx').textContent='Active la localisation : '+e.message);
+}
+$('#wr').onclick=wx;
+
+// ---------- Entretien ----------
+function maint(){
+  const t=S?S.total:null;if(t==null){$('#bn').textContent='Connecte-toi pour calculer.';return}
+  const used=(t-svc.b0)+svc.hard*.5,left=Math.max(0,100-used/20);
+  $('#bw').textContent=Math.round(left)+' %';$('#bwb').style.width=left+'%';
+  $('#bn').textContent=`${(t-svc.b0).toFixed(0)} km depuis le dernier changement · ${svc.hard} freinages brusques détectés`;
+  const nx=i=>(Math.ceil((t+.01)/i)*i-t).toFixed(0)+' km';
+  $('#mt').innerHTML=[['Vérifier vis et boulons',300],['Pression et usure des pneus',500],['Contrôle des freins',1000],['Entretien général',2000]].map(m=>`<div class="row"><span>${m[0]}</span><span>dans ~${nx(m[1])}</span></div>`).join('');
+}
+$('#bs').onclick=()=>{if(S){svc.b0=S.total;svc.hard=0;W('svc',svc);maint()}};
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
 
